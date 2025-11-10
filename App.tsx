@@ -1,20 +1,50 @@
+import React, { useEffect, useRef } from 'react';
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View } from 'react-native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+import * as Notifications from 'expo-notifications';
+import { AuthProvider } from './src/context/AuthContext';
+import AppNavigator from './src/navigation/AppNavigator';
+import { notificationService } from './src/services/notificationService';
 
 export default function App() {
-  return (
-    <View style={styles.container}>
-      <Text>Open up App.tsx to start working on your app!</Text>
-      <StatusBar style="auto" />
-    </View>
-  );
-}
+    const notificationListener = useRef<any>();
+    const responseListener = useRef<any>();
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-});
+    useEffect(() => {
+        // Register for push notifications
+        notificationService.registerForPushNotifications();
+
+        // Listen for incoming notifications
+        notificationListener.current = notificationService.addNotificationListener(
+            (notification) => {
+                console.log('Notification received:', notification);
+            }
+        );
+
+        // Listen for notification interactions
+        responseListener.current = notificationService.addNotificationResponseListener(
+            (response) => {
+                console.log('Notification tapped:', response);
+                // Handle navigation based on notification data
+            }
+        );
+
+        return () => {
+            if (notificationListener.current) {
+                Notifications.removeNotificationSubscription(notificationListener.current);
+            }
+            if (responseListener.current) {
+                Notifications.removeNotificationSubscription(responseListener.current);
+            }
+        };
+    }, []);
+
+    return (
+        <SafeAreaProvider>
+            <AuthProvider>
+                <AppNavigator />
+                <StatusBar style="auto" />
+            </AuthProvider>
+        </SafeAreaProvider>
+    );
+}
