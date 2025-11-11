@@ -2,14 +2,14 @@ export interface User {
     id: string;
     email: string;
     name: string;
-    avatar?: string;
+    avatar?: string | null;
     bio?: string
     createdAt: Date;
     followers: string[]; 
     following: string[]; 
     followersCount: number;
     followingCount: number;
-    pushToken?: string; 
+    pushToken?: string | null; 
 }
 
 export interface UserProfile extends User {

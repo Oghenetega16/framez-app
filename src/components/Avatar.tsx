@@ -61,7 +61,7 @@ const Avatar: React.FC<AvatarProps> = ({
                 <Image 
                     source={{ uri: user.avatar }} 
                     style={styles.avatar}
-                    defaultSource={require('../../assets/default-avatar.png') as any}
+                    defaultSource={require('../../assets/default-avatar.jpg') as any}
                 />
             ) : (
                 <View style={[styles.placeholder, { backgroundColor }]}>

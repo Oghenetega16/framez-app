@@ -15,6 +15,8 @@ import { useAuth } from '../context/AuthContext';
 import { postService } from '../services/postService';
 import { storageService } from '../services/storageService';
 import { imageService } from '../services/imageService';
+import { Ionicons } from '@expo/vector-icons';
+import { MediaTypeOptions } from 'expo-image-picker';
 
 const CreatePostScreen: React.FC = () => {
     const [content, setContent] = useState('');
@@ -23,15 +25,32 @@ const CreatePostScreen: React.FC = () => {
     const { user } = useAuth();
 
     const pickImage = async () => {
-        const result = await ImagePicker.launchImageLibraryAsync({
-            mediaTypes: ImagePicker.MediaTypeOptions.Images,
-            allowsEditing: true,
-            aspect: [4, 3],
-            quality: 0.8,
-        });
+        try {
+            // Request permission first
+            const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+            
+            if (permissionResult.granted === false) {
+                Alert.alert(
+                    'Permission Required',
+                    'Please allow access to your photos to add images.'
+                );
+                return;
+            }
 
-        if (!result.canceled) {
-            setImageUri(result.assets[0].uri);
+            const pickerResult = await ImagePicker.launchImageLibraryAsync({
+                allowsEditing: true,
+                aspect: [4, 3],
+                quality: 0.8,
+            });
+
+            console.log('Picker result:', pickerResult);
+
+            if (!pickerResult.canceled && pickerResult.assets && pickerResult.assets.length > 0) {
+                setImageUri(pickerResult.assets[0].uri);
+            }
+        } catch (error) {
+            console.error('Error picking image:', error);
+            Alert.alert('Error', 'Failed to pick image');
         }
     };
 
@@ -51,11 +70,15 @@ const CreatePostScreen: React.FC = () => {
             let uploadedImageUrl: string | undefined;
 
             if (imageUri) {
+                console.log('Compressing image...');
                 // Compress image before upload
                 const compressedUri = await imageService.compressImage(imageUri);
+                console.log('Uploading image...');
                 uploadedImageUrl = await storageService.uploadImage(compressedUri, user.id);
+                console.log('Image uploaded:', uploadedImageUrl);
             }
 
+            console.log('Creating post...');
             await postService.createPost(user.id, {
                 content: content.trim(),
                 imageUrl: uploadedImageUrl,
@@ -65,8 +88,8 @@ const CreatePostScreen: React.FC = () => {
             setContent('');
             setImageUri(null);
         } catch (error) {
-            Alert.alert('Error', 'Failed to create post');
-            console.error(error);
+            console.error('Error creating post:', error);
+            Alert.alert('Error', error instanceof Error ? error.message : 'Failed to create post');
         } finally {
             setLoading(false);
         }
@@ -86,7 +109,10 @@ const CreatePostScreen: React.FC = () => {
                     numberOfLines={5}
                     textAlignVertical="top"
                     maxLength={500}
+                    editable={!loading}
                 />
+
+                <Text style={styles.charCount}>{content.length}/500</Text>
 
                 {imageUri && (
                     <View style={styles.imagePreview}>
@@ -94,13 +120,23 @@ const CreatePostScreen: React.FC = () => {
                         <TouchableOpacity
                             style={styles.removeImageButton}
                             onPress={() => setImageUri(null)}
+                            disabled={loading}
                         >
-                            <Text style={styles.removeImageText}>Remove</Text>
+                            <Ionicons name="close-circle" size={24} color="#fff" />
                         </TouchableOpacity>
                     </View>
                 )}
 
-                <TouchableOpacity style={styles.imageButton} onPress={pickImage}>
+                <TouchableOpacity 
+                    style={styles.imageButton} 
+                    onPress={pickImage}
+                    disabled={loading}
+                >
+                    <Ionicons 
+                        name={imageUri ? "images" : "image-outline"} 
+                        size={20} 
+                        color="#007AFF" 
+                    />
                     <Text style={styles.imageButtonText}>
                         {imageUri ? 'Change Image' : 'Add Image'}
                     </Text>
@@ -114,7 +150,10 @@ const CreatePostScreen: React.FC = () => {
                     {loading ? (
                         <ActivityIndicator color="#fff" />
                     ) : (
-                        <Text style={styles.postButtonText}>Post</Text>
+                        <>
+                            <Text style={styles.postButtonText}>Post</Text>
+                            <Ionicons name="send" size={18} color="#fff" />
+                        </>
                     )}
                 </TouchableOpacity>
             </View>
@@ -143,10 +182,17 @@ const styles = StyleSheet.create({
         padding: 15,
         fontSize: 16,
         minHeight: 120,
+        marginBottom: 8,
+    },
+    charCount: {
+        textAlign: 'right',
+        fontSize: 12,
+        color: '#666',
         marginBottom: 15,
     },
     imagePreview: {
         marginBottom: 15,
+        position: 'relative',
     },
     image: {
         width: '100%',
@@ -157,13 +203,8 @@ const styles = StyleSheet.create({
         position: 'absolute',
         top: 10,
         right: 10,
-        backgroundColor: 'rgba(0,0,0,0.6)',
-        padding: 8,
-        borderRadius: 5,
-    },
-    removeImageText: {
-        color: '#fff',
-        fontSize: 12,
+        backgroundColor: 'rgba(0,0,0,0.5)',
+        borderRadius: 15,
     },
     imageButton: {
         backgroundColor: '#f0f0f0',
@@ -171,17 +212,22 @@ const styles = StyleSheet.create({
         borderRadius: 8,
         alignItems: 'center',
         marginBottom: 15,
+        flexDirection: 'row',
+        justifyContent: 'center',
     },
     imageButtonText: {
         color: '#007AFF',
         fontSize: 16,
         fontWeight: '600',
+        marginLeft: 8,
     },
     postButton: {
         backgroundColor: '#007AFF',
         padding: 15,
         borderRadius: 8,
         alignItems: 'center',
+        flexDirection: 'row',
+        justifyContent: 'center',
     },
     buttonDisabled: {
         backgroundColor: '#ccc',
@@ -190,6 +236,7 @@ const styles = StyleSheet.create({
         color: '#fff',
         fontSize: 16,
         fontWeight: '600',
+        marginRight: 8,
     },
 });
 

@@ -17,6 +17,7 @@ import { AuthStackParamList } from '../navigation/types';
 import { useAuth } from '../context/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
+import { MediaTypeOptions } from 'expo-image-picker';
 
 type SignupScreenProps = {
     navigation: NativeStackNavigationProp<AuthStackParamList, 'Signup'>;
@@ -41,10 +42,9 @@ const SignupScreen: React.FC<SignupScreenProps> = ({ navigation }) => {
     // Request permission and pick image
     const pickAvatar = async () => {
         try {
-            // Request permission
-            const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+            const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
             
-            if (status !== 'granted') {
+            if (permissionResult.granted === false) {
                 Alert.alert(
                     'Permission Required',
                     'Please allow access to your photos to set a profile picture.'
@@ -52,16 +52,14 @@ const SignupScreen: React.FC<SignupScreenProps> = ({ navigation }) => {
                 return;
             }
 
-            // Launch image picker
-            const result = await ImagePicker.launchImageLibraryAsync({
-                mediaTypes: ImagePicker.MediaTypeOptions.Images,
+            const pickerResult = await ImagePicker.launchImageLibraryAsync({
                 allowsEditing: true,
                 aspect: [1, 1],
                 quality: 0.8,
             });
 
-            if (!result.canceled) {
-                setAvatarUri(result.assets[0].uri);
+            if (!pickerResult.canceled && pickerResult.assets && pickerResult.assets.length > 0) {
+                setAvatarUri(pickerResult.assets[0].uri);
             }
         } catch (error) {
             console.error('Error picking image:', error);
@@ -144,7 +142,7 @@ const SignupScreen: React.FC<SignupScreenProps> = ({ navigation }) => {
         }
 
         try {
-            await signup(email.trim().toLowerCase(), password, name.trim());
+            await signup(email.trim().toLowerCase(), password, name.trim(), avatarUri);
             // Navigation handled automatically by AuthContext
             // Note: Avatar upload will be handled in profile editing after signup
         } catch (error) {

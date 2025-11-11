@@ -187,15 +187,15 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
                         <View style={styles.dividerLine} />
                     </View>
 
-                    {/* Login Link */}
+                    {/* Sign Up Link - FIXED */}
                     <TouchableOpacity
-                        onPress={() => navigation.goBack()}
+                        onPress={() => navigation.navigate('Signup')}
                         style={styles.linkContainer}
                         disabled={loading}
                     >
                         <Text style={styles.linkText}>
-                            Already have an account?{' '}
-                            <Text style={styles.linkTextBold}>Login</Text>
+                            Don't have an account?{' '}
+                            <Text style={styles.linkTextBold}>Sign Up</Text>
                         </Text>
                     </TouchableOpacity>
                 </View>
@@ -215,10 +215,10 @@ const styles = StyleSheet.create({
         paddingBottom: 30,
     },
     logoContainer: {
-    alignItems: 'center',
-    paddingTop: 60,
-    paddingBottom: 40,
-  },
+        alignItems: 'center',
+        paddingTop: 60,
+        paddingBottom: 40,
+    },
     logoCircle: {
         width: 100,
         height: 100,
@@ -251,12 +251,13 @@ const styles = StyleSheet.create({
     title: {
         fontSize: 32,
         fontWeight: 'bold',
-        marginBottom: 8,
+        marginBottom: 3,
         color: '#333',
     },
     subtitle: {
         fontSize: 16,
         color: '#666',
+        marginBottom: 8,
     },
     form: {
         flex: 1,

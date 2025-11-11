@@ -7,8 +7,8 @@ import AppNavigator from './src/navigation/AppNavigator';
 import { notificationService } from './src/services/notificationService';
 
 export default function App() {
-    const notificationListener = useRef<any>();
-    const responseListener = useRef<any>();
+    const notificationListener = useRef<Notifications.Subscription | null>(null);
+    const responseListener = useRef<Notifications.Subscription | null>(null);
 
     useEffect(() => {
         // Register for push notifications
@@ -31,10 +31,10 @@ export default function App() {
 
         return () => {
             if (notificationListener.current) {
-                Notifications.removeNotificationSubscription(notificationListener.current);
+                notificationListener.current.remove();
             }
             if (responseListener.current) {
-                Notifications.removeNotificationSubscription(responseListener.current);
+                responseListener.current.remove();
             }
         };
     }, []);

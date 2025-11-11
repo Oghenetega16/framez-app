@@ -24,7 +24,7 @@ class AuthService {
     }
 
     // Sign up new user
-    async signup(email: string, password: string, name: string): Promise<User> {
+    async signup(email: string, password: string, name: string, avatarUri?: string | null): Promise<User> {
         try {
             // Create authentication account
             const userCredential = await createUserWithEmailAndPassword(
@@ -38,24 +38,38 @@ class AuthService {
                 displayName: name,
             });
 
+            // Prepare Firestore data - ONLY include fields that have values
+            const firestoreData: any = {
+                email: userCredential.user.email,
+                name: name,
+                createdAt: new Date().toISOString(),
+                followers: [],
+                following: [],
+                followersCount: 0,
+                followingCount: 0,
+            };
+
+            // Only add avatar if it exists
+            if (avatarUri) {
+                firestoreData.avatar = avatarUri;
+            }
+
             // Create user document in Firestore
+            await setDoc(doc(db, 'users', userCredential.user.uid), firestoreData);
+
+            // Return user object for the app
             const userData: User = {
                 id: userCredential.user.uid,
                 email: userCredential.user.email!,
                 name: name,
-                avatar: undefined,
+                avatar: avatarUri || null,
                 createdAt: new Date(),
                 followers: [],
                 following: [],
                 followersCount: 0,
                 followingCount: 0,
-                pushToken: undefined,
+                pushToken: null,
             };
-
-            await setDoc(doc(db, 'users', userCredential.user.uid), {
-                ...userData,
-                createdAt: userData.createdAt.toISOString(),
-            });
 
             return userData;
         } catch (error: any) {
@@ -67,13 +81,20 @@ class AuthService {
     // Login existing user
     async login(email: string, password: string): Promise<User> {
         try {
+            console.log('Attempting login for:', email);
+            
             const userCredential = await signInWithEmailAndPassword(
                 auth,
                 email,
                 password
             );
-
+            
+            console.log('Authentication successful, UID:', userCredential.user.uid);
+            
             const user = await this.getUserData(userCredential.user.uid);
+            
+            console.log('User data retrieved:', user);
+            
             if (!user) {
                 throw new Error('User data not found');
             }
@@ -106,21 +127,31 @@ class AuthService {
     // Get user data from Firestore
     private async getUserData(userId: string): Promise<User | null> {
         try {
+            console.log('Fetching user data for UID:', userId);
+            
             const userDoc = await getDoc(doc(db, 'users', userId));
-            if (!userDoc.exists()) return null;
+            
+            console.log('Document exists:', userDoc.exists());
+            
+            if (!userDoc.exists()) {
+                console.log('User document does not exist in Firestore');
+                return null;
+            }
 
             const data = userDoc.data();
+            console.log('Raw Firestore data:', JSON.stringify(data, null, 2));
+
             return {
                 id: userDoc.id,
                 email: data.email,
                 name: data.name,
-                avatar: data.avatar,
-                createdAt: new Date(data.createdAt),
+                avatar: data.avatar || null,
+                createdAt: data.createdAt ? new Date(data.createdAt) : new Date(),
                 followers: data.followers || [],
                 following: data.following || [],
                 followersCount: data.followersCount || 0,
                 followingCount: data.followingCount || 0,
-                pushToken: data.pushToken || undefined,
+                pushToken: data.pushToken || null,
             };
         } catch (error) {
             console.error('Error fetching user data:', error);

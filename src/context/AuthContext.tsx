@@ -4,7 +4,7 @@ import { authService } from '../services/authService';
 
 interface AuthContextType extends AuthState {
     login: (email: string, password: string) => Promise<void>;
-    signup: (email: string, password: string, name: string) => Promise<void>;
+    signup: (email: string, password: string, name: string, avatarUri?: string | null) => Promise<void>;
     logout: () => Promise<void>;
 }
 
@@ -44,11 +44,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         }
     };
 
-    const signup = async (email: string, password: string, name: string) => {
+    const signup = async (email: string, password: string, name: string, avatarUri?: string | null) => {
         try {
             setLoading(true);
             setError(null);
-            const newUser = await authService.signup(email, password, name);
+            const newUser = await authService.signup(email, password, name, avatarUri);
             setUser(newUser);
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Signup failed');
