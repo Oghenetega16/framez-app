@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
     View,
     Text,
@@ -7,8 +7,9 @@ import {
     FlatList,
     Image,
     ActivityIndicator,
+    RefreshControl,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
 import { postService } from '../services/postService';
@@ -22,31 +23,59 @@ const ProfileScreen: React.FC = () => {
     const navigation = useNavigation();
     const [posts, setPosts] = useState<Post[]>([]);
     const [loading, setLoading] = useState(true);
+    const [refreshing, setRefreshing] = useState(false);
+
+    // Load posts when screen comes into focus
+    useFocusEffect(
+        useCallback(() => {
+            console.log('[ProfileScreen] Screen focused, loading posts...');
+            loadUserPosts();
+        }, [user])
+    );
 
     useEffect(() => {
-        loadUserPosts();
-        registerPushNotifications();
+        // registerPushNotifications();
     }, [user]);
 
     const loadUserPosts = async () => {
-        if (!user) return;
+        if (!user) {
+            console.log('[ProfileScreen] No user found');
+            return;
+        }
 
         try {
+            console.log('[ProfileScreen] Loading posts for user:', user.id);
+            setLoading(true);
             const userPosts = await postService.getUserPosts(user.id);
+            console.log('[ProfileScreen] Loaded posts:', userPosts.length);
             setPosts(userPosts);
         } catch (error) {
-            console.error('Failed to load user posts:', error);
+            console.error('[ProfileScreen] Failed to load user posts:', error);
         } finally {
             setLoading(false);
         }
     };
 
+    const onRefresh = async () => {
+        setRefreshing(true);
+        await loadUserPosts();
+        setRefreshing(false);
+    };
+
     const registerPushNotifications = async () => {
         if (!user) return;
 
-        const token = await notificationService.registerForPushNotifications();
-        if (token) {
-            await userService.updatePushToken(user.id, token);
+        try {
+            const token = await notificationService.registerForPushNotifications();
+            if (token) {
+                await userService.updatePushToken(user.id, token);
+                console.log('Push notifications registered successfully');
+            } else {
+                console.log('Push notifications not available');
+            }
+        } catch (error) {
+            console.error('Failed to register push notifications:', error);
+            // Don't show error to user - notifications are optional
         }
     };
 
@@ -72,6 +101,13 @@ const ProfileScreen: React.FC = () => {
                 data={posts}
                 keyExtractor={(item) => item.id}
                 renderItem={({ item }) => <PostCard post={item} onPostUpdate={loadUserPosts} />}
+                refreshControl={
+                    <RefreshControl
+                        refreshing={refreshing}
+                        onRefresh={onRefresh}
+                        tintColor="#007AFF"
+                    />
+                }
                 ListHeaderComponent={
                     <View style={styles.header}>
                         <View style={styles.avatarContainer}>
@@ -122,16 +158,26 @@ const ProfileScreen: React.FC = () => {
                                 <Text style={styles.logoutText}>Logout</Text>
                             </TouchableOpacity>
                         </View>
+
+                        {/* Posts Section Header */}
+                        <View style={styles.postsHeader}>
+                            <Ionicons name="grid-outline" size={20} color="#333" />
+                            <Text style={styles.postsHeaderText}>Posts</Text>
+                        </View>
                     </View>
                 }
                 ListEmptyComponent={
                     loading ? (
                         <View style={styles.centered}>
-                        <ActivityIndicator size="large" color="#007AFF" />
+                            <ActivityIndicator size="large" color="#007AFF" />
                         </View>
                     ) : (
                         <View style={styles.centered}>
-                        <Text style={styles.emptyText}>No posts yet</Text>
+                            <Ionicons name="images-outline" size={64} color="#ccc" />
+                            <Text style={styles.emptyText}>No posts yet</Text>
+                            <Text style={styles.emptySubtext}>
+                                Create your first post to see it here
+                            </Text>
                         </View>
                     )
                 }
@@ -244,6 +290,22 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: '600',
     },
+    postsHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginTop: 20,
+        paddingTop: 20,
+        borderTopWidth: 1,
+        borderTopColor: '#e0e0e0',
+        width: '100%',
+        justifyContent: 'center',
+        gap: 8,
+    },
+    postsHeaderText: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: '#333',
+    },
     centered: {
         flex: 1,
         justifyContent: 'center',
@@ -254,6 +316,14 @@ const styles = StyleSheet.create({
     emptyText: {
         fontSize: 16,
         color: '#666',
+        marginTop: 16,
+        fontWeight: '600',
+    },
+    emptySubtext: {
+        fontSize: 14,
+        color: '#999',
+        marginTop: 8,
+        textAlign: 'center',
     },
 });
 

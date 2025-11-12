@@ -65,7 +65,7 @@ class PostService {
             const q = query(
                 this.postsCollection,
                 where('userId', '==', userId),
-                orderBy('timestamp', 'desc')
+                // orderBy('timestamp', 'desc')
             );
             const querySnapshot = await getDocs(q);
 
