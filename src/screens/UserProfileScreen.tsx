@@ -54,17 +54,36 @@ const UserProfileScreen: React.FC = () => {
         if (!currentUser || !profileUser) return;
 
         try {
+            // Optimistic UI update
+            setIsFollowing((prev) => !prev);
+
+            // Update followers count locally for smoother UX
+            setProfileUser((prev) =>
+            prev
+                ? {
+                    ...prev,
+                    followersCount: isFollowing
+                    ? Math.max(prev.followersCount - 1, 0)
+                    : prev.followersCount + 1,
+                }
+                : prev
+            );
+
+            // Firestore update
             if (isFollowing) {
                 await followService.unfollowUser(currentUser.id, userId);
             } else {
                 await followService.followUser(currentUser.id, userId);
             }
-            setIsFollowing(!isFollowing);
-            await loadProfile();
+
+            // Optionally refresh from Firestore
+            // await loadProfile();
         } catch (error) {
             console.error('Failed to toggle follow:', error);
+            setIsFollowing((prev) => !prev); // revert UI if failed
         }
     };
+
 
     if (loading) {
         return (
@@ -128,15 +147,15 @@ const UserProfileScreen: React.FC = () => {
                         <TouchableOpacity
                             style={[
                             styles.followButton,
-                            isFollowing && styles.followingButton,
+                            isFollowing && styles.unfollowButton,
                             ]}
                             onPress={handleFollowToggle}
                         >
                             <Text style={[
                                 styles.followButtonText,
-                                isFollowing && styles.followingButtonText,
+                                isFollowing && styles.unfollowButtonText,
                                 ]}>
-                                {isFollowing ? 'Following' : 'Follow'}
+                                {isFollowing ? 'Unfollow' : 'Follow'}
                             </Text>
                         </TouchableOpacity>
                     )}
@@ -234,7 +253,7 @@ const styles = StyleSheet.create({
         paddingHorizontal: 40,
         borderRadius: 8,
     },
-    followingButton: {
+    unfollowButton: {
         backgroundColor: '#fff',
         borderWidth: 1,
         borderColor: '#007AFF',
@@ -244,7 +263,7 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: '600',
     },
-    followingButtonText: {
+    unfollowButtonText: {
         color: '#007AFF',
     },
     emptyText: {

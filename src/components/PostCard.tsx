@@ -24,22 +24,32 @@ const PostCard: React.FC<PostCardProps> = ({ post, onPostUpdate, onDelete }) => 
         user ? likeService.hasLiked(post, user.id) : false
     );
     const [likesCount, setLikesCount] = useState(post.likesCount);
+    const [loading, setLoading] = useState(false);
 
     const handleLike = async () => {
         if (!user) return;
 
+        if (loading) return;
+        setLoading(true);
+
         try {
-            if (isLiked) {
+            const hasLiked = likeService.hasLiked(post, user.id);
+
+            if (hasLiked) {
                 await likeService.unlikePost(user.id, post.id);
-                setLikesCount(prev => prev - 1);
+                setLikesCount(prev => Math.max(prev - 1, 0)); // never below 0
+                setIsLiked(false);
             } else {
                 await likeService.likePost(user.id, post.id);
                 setLikesCount(prev => prev + 1);
+                setIsLiked(true);
             }
-            setIsLiked(!isLiked);
+            
             onPostUpdate?.();
         } catch (error) {
             console.error('Error toggling like:', error);
+        } finally {
+            setLoading(false);
         }
     };
 
